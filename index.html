@@ -53,14 +53,23 @@
     padding:20px 16px 0;
   }
   .app-title{
-    font-family:'Fredoka', sans-serif;
-    font-size:15px;
-    letter-spacing:0.02em;
-    color:var(--ink-soft);
-    margin:0 0 16px;
+    margin:0 0 18px;
     display:flex;
     align-items:center;
     justify-content:space-between;
+  }
+  .brand{ display:flex; align-items:center; gap:9px; }
+  .brand-mark{
+    width:28px; height:28px; border-radius:9px; flex-shrink:0;
+    background:linear-gradient(155deg, var(--blue), var(--income));
+    color:#fff; display:flex; align-items:center; justify-content:center;
+    font-family:'Fredoka', sans-serif; font-weight:600; font-size:15px;
+    box-shadow:0 2px 6px rgba(126,186,209,0.35);
+  }
+  .brand-name{
+    font-family:'Fredoka', sans-serif;
+    font-size:18px; font-weight:600; letter-spacing:-0.01em;
+    color:var(--ink);
   }
   .app-title .cog{
     cursor:pointer;
@@ -103,16 +112,26 @@
   }
   .summary-card{
     background:var(--card); border:1px solid var(--line); border-radius:var(--radius-md);
-    padding:14px 12px; box-shadow:var(--shadow);
+    padding:14px 10px; box-shadow:var(--shadow); min-width:0;
   }
   .summary-card.income-card{ background:var(--income-bg); border-color:transparent; }
   .summary-card.expense-card{ background:var(--expense-bg); border-color:transparent; }
   .summary-card.balance-card2{ background:var(--blue-bg); border-color:transparent; }
-  .sc-label{ font-size:11px; color:var(--ink-soft); margin-bottom:5px; }
+  .sc-label{
+    font-size:11px; font-weight:500; letter-spacing:0.01em; color:var(--ink-soft);
+    margin-bottom:7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
   .summary-card.income-card .sc-label{ color:var(--income); opacity:.85;}
   .summary-card.expense-card .sc-label{ color:var(--expense); opacity:.85;}
   .summary-card.balance-card2 .sc-label{ color:var(--blue); opacity:.85;}
-  .sc-amt{ font-family:'Fredoka', sans-serif; font-size:19px; font-weight:600; }
+  .sc-amt{
+    font-family:'Fredoka', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.01em;
+    font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  @media (max-width:380px){
+    .sc-amt{ font-size:14px; }
+    .sc-label{ font-size:10px; }
+  }
 
   .grid-2{ display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; }
 
@@ -248,6 +267,17 @@
   .sheet h3{
     font-family:'Fredoka', sans-serif; font-weight:500; font-size:19px; margin:2px 0 16px;
   }
+  .sheet-title-row{
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .sheet-title-row h3{ margin:2px 0 16px; }
+  .sheet-close-x{
+    width:32px; height:32px; border-radius:50%; border:none; background:var(--card);
+    color:var(--ink-soft); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex-shrink:0; margin-top:-6px;
+  }
+  .sheet-close-x:hover{ background:var(--paper); color:var(--ink); }
+  .sheet-close-x:active{ transform:scale(0.92); }
   .type-toggle{
     display:flex; background:var(--card); border:1px solid var(--line); border-radius:12px;
     padding:3px; margin-bottom:16px;
@@ -375,7 +405,10 @@
 
 <div class="wrap">
   <div class="app-title">
-    <span>나의 가계부</span>
+    <div class="brand">
+      <span class="brand-mark">₩</span>
+      <span class="brand-name">나의 가계부</span>
+    </div>
     <div class="cog" id="manageBtn" title="관리">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
     </div>
@@ -525,7 +558,12 @@
 
 <div class="sheet-overlay" id="manageOverlay">
   <div class="sheet">
-    <h3>관리</h3>
+    <div class="sheet-title-row">
+      <h3>관리</h3>
+      <button type="button" class="sheet-close-x" id="manageCloseX" aria-label="닫기">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
 
     <div class="manage-add-box" style="margin-bottom:14px;">
       <label class="field-label">💾 백업</label>
@@ -1510,7 +1548,12 @@
 
   function excelCellDateStr(v, fallbackYear){
     if(v instanceof Date && !isNaN(v.getTime())){
-      return v.getFullYear() + '-' + pad2(v.getMonth() + 1) + '-' + pad2(v.getDate());
+      // 엑셀 날짜 셀이 수식으로 채워진 경우, 부동소수점 오차 때문에 자정 몇 초 전(예: 23:59:08)으로
+      // 계산되어 실제로는 하루 전 날짜로 읽히는 경우가 있다. 자정 임박 시각이면 다음 날로 보정한다.
+      var y = v.getFullYear(), m = v.getMonth(), d = v.getDate();
+      if(v.getHours() === 23 && v.getMinutes() >= 55) d += 1;
+      var fixed = new Date(y, m, d);
+      return fixed.getFullYear() + '-' + pad2(fixed.getMonth() + 1) + '-' + pad2(fixed.getDate());
     }
     if(typeof v === 'number' && window.XLSX && XLSX.SSF){
       var d = XLSX.SSF.parse_date_code(v);
@@ -1812,6 +1855,9 @@
   }
   document.getElementById('pasteImportBtn').addEventListener('click', importPastedRows);
   document.getElementById('closeManageSheet').addEventListener('click', function(){
+    document.getElementById('manageOverlay').classList.remove('open');
+  });
+  document.getElementById('manageCloseX').addEventListener('click', function(){
     document.getElementById('manageOverlay').classList.remove('open');
   });
   document.getElementById('manageOverlay').addEventListener('click', function(e){
