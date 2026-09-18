@@ -1,17 +1,19 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="나의 가계부">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#F2F8FA">
-<meta name="description" content="원화 기반 개인 가계부 - 대시보드, 기록, 달력, 연간 통계">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="icon.png">
 <title>나의 가계부</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onerror="var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';document.head.appendChild(s);"></script>
 <style>
   :root{
     --paper:#F2F8FA;
@@ -368,6 +370,8 @@
     .cal-cell .cal-in, .cal-cell .cal-ex{ font-size:9px; }
   }
 </style>
+</head>
+<body>
 
 <div class="wrap">
   <div class="app-title">
@@ -536,21 +540,24 @@
       <div class="manage-sub" id="backupStatus" style="margin-top:4px;"></div>
     </div>
 
-    <button type="button" class="btn btn-ghost" id="importDataBtn" style="width:100%; margin-bottom:10px;">📥 엑셀 데이터 가져오기</button>
+    <button type="button" class="btn btn-ghost" id="importDataBtn" style="width:100%; margin-bottom:6px;">📥 엑셀 파일 업로드</button>
+    <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none;">
+    <div class="manage-sub" id="excelImportStatus" style="margin-bottom:10px;"></div>
 
     <div class="manage-add-box" style="margin-bottom:14px;">
       <label class="field-label">🔗 구글시트 연동</label>
-      <div class="manage-row" style="margin-bottom:8px;">
-        <input type="text" id="sheetIdInput" class="mname" placeholder="시트 링크 또는 ID" style="flex:1 1 100%;">
+      <div class="manage-sub" style="margin-bottom:8px; line-height:1.5;">
+        구글시트에서 날짜~비고 열이 포함된 범위를 드래그해 선택하고 Ctrl+C(맥은 Cmd+C)로 복사한 뒤, 아래 칸을 클릭하고 Ctrl+V로 붙여넣으세요.
       </div>
       <div class="manage-row" style="margin-bottom:8px;">
-        <input type="text" id="sheetTabName" class="mname" placeholder="탭 이름 (기본: 기록)" style="flex:1 1 100%;">
+        <input type="number" id="pasteYearInput" class="mname" placeholder="연도 (예: 2026)" style="flex:1 1 100%;">
       </div>
-      <button type="button" class="btn btn-ghost" id="refreshSheetBtn" style="width:100%;">🔄 구글시트에서 새로고침</button>
-      <div class="manage-sub" style="margin-top:8px; line-height:1.5;">
-        시트 공유 설정이 "링크가 있는 모든 사용자 - 뷰어"로 되어 있으면 별도 게시 없이 바로 연동돼요. 링크의 카테고리 이름은 앱의 카테고리 이름과 정확히 같아야 인식돼요.
-      </div>
-      <div class="manage-sub" id="sheetSyncStatus" style="margin-top:4px;"></div>
+      <textarea id="pasteSheetData" rows="6" style="width:100%; font-family:monospace; font-size:12px; box-sizing:border-box; border-radius:10px; padding:8px;" placeholder="여기에 붙여넣기 (Ctrl+V)"></textarea>
+      <label style="display:flex; align-items:center; gap:6px; margin-top:6px; font-size:13px; color:var(--muted, #6b7f88);">
+        <input type="checkbox" id="pasteHasHeader" checked> 첫 줄은 제목(머리글) 행이에요
+      </label>
+      <button type="button" class="btn btn-ghost" id="pasteImportBtn" style="width:100%; margin-top:6px;">📋 붙여넣은 내용으로 가져오기</button>
+      <div class="manage-sub" id="pasteSyncStatus" style="margin-top:4px;"></div>
     </div>
     <div class="tabbar" id="manageTabs">
       <button type="button" class="active" data-mtab="cat">카테고리</button>
@@ -622,9 +629,10 @@
 <div class="sheet-overlay" id="importConfirmOverlay">
   <div class="sheet" style="max-width:380px;">
     <h3>엑셀 데이터 가져오기</h3>
-    <p style="font-size:13px; color:var(--ink-soft); line-height:1.6; margin:0 0 18px;">
-      엑셀 파일에서 가져온 데이터로 현재 가계부의 카테고리, 거래 내역, 빚, 할부 정보를 모두 덮어씁니다. 되돌릴 수 없어요. 계속할까요?
+    <p style="font-size:13px; color:var(--ink-soft); line-height:1.6; margin:0 0 10px;">
+      엑셀 파일에서 가져온 데이터로 현재 가계부의 카테고리, 거래 내역, 빚, 할부 정보를 모두 덮어씁니다. 되돌릴 수 없어요.
     </p>
+    <p id="importPreviewText" style="font-size:13px; color:var(--ink); line-height:1.6; margin:0 0 18px; font-weight:600;"></p>
     <div class="sheet-actions" style="margin-top:0;">
       <button class="btn btn-ghost" id="importCancelBtn">취소</button>
       <button class="btn btn-primary" id="importConfirmBtn">가져오기</button>
@@ -723,11 +731,31 @@
     });
   }
 
-  var LEDGER_STORAGE_KEY = 'ledger:data:v1';
-  var dbStatus = 'init'; // init | ready | unavailable
+  var dbApi = null, viewerId = null, dbStatus = 'init'; // init | ready | unavailable
+  var LS_KEY = 'ledger-data-local-v1';
+
+  function ledgerDocRef(){ return dbApi.doc('data/users/' + viewerId + '/ledger'); }
+
+  function lsSaveAll(){
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(data)); }catch(e){ /* private mode etc: ignore */ }
+  }
+  function lsLoadAll(){
+    try{
+      var raw = localStorage.getItem(LS_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){ /* ignore */ }
+    return null;
+  }
 
   async function initDb(){
-    dbStatus = 'ready'; // real deployment: localStorage is always available
+    try{
+      var userApi = (typeof claude !== 'undefined') ? await claude.use('user') : null;
+      dbApi = (typeof claude !== 'undefined') ? await claude.use('db') : null;
+      if(userApi) viewerId = await userApi.id();
+      dbStatus = (dbApi && viewerId) ? 'ready' : 'unavailable';
+    }catch(e){
+      dbStatus = 'unavailable';
+    }
   }
 
   function allMonthsInTransactions(){
@@ -738,20 +766,30 @@
 
   async function load(){
     await initDb();
-    try{
-      var raw = localStorage.getItem(LEDGER_STORAGE_KEY);
-      if(raw){
-        var m = JSON.parse(raw) || {};
-        data.categories = m.categories || [];
-        data.debts = m.debts || [];
-        data.installments = m.installments || [];
-        data.sheetSyncId = m.sheetSyncId || '';
-        data.sheetSyncTab = m.sheetSyncTab || '기록';
-        data.transactions = Array.isArray(m.transactions) ? m.transactions : [];
+    if(dbStatus === 'ready'){
+      try{
+        var metaSnap = await ledgerDocRef().get();
+        if(metaSnap.exists){
+          var m = metaSnap.data() || {};
+          data.categories = m.categories || [];
+          data.debts = m.debts || [];
+          data.installments = m.installments || [];
+          data.sheetSyncId = m.sheetSyncId || '';
+          data.sheetSyncTab = m.sheetSyncTab || '기록';
+        }
+        var monthsSnap = await ledgerDocRef().collection('months').get();
+        data.transactions = [];
+        monthsSnap.docs.forEach(function(d){
+          var body = d.data();
+          if(body && Array.isArray(body.items)) data.transactions = data.transactions.concat(body.items);
+        });
+      }catch(e){
+        console.error('load error', e);
+        showToast('불러오기 실패: ' + (e && e.message ? e.message : e));
       }
-    }catch(e){
-      console.error('load error', e);
-      showToast('불러오기 실패: ' + (e && e.message ? e.message : e));
+    } else {
+      var local = lsLoadAll();
+      if(local) data = local;
     }
     if(!data.categories || data.categories.length === 0){
       data.categories = defaultCategories.slice();
@@ -768,29 +806,38 @@
     render();
   }
 
-  function persistLedger(){
-    if(dbStatus !== 'ready') return;
+  async function saveMeta(retrying){
+    if(dbStatus !== 'ready'){ lsSaveAll(); return; }
     try{
-      localStorage.setItem(LEDGER_STORAGE_KEY, JSON.stringify({
+      await ledgerDocRef().set({
         categories: data.categories,
         debts: data.debts,
         installments: data.installments,
         sheetSyncId: data.sheetSyncId || '',
-        sheetSyncTab: data.sheetSyncTab || '기록',
-        transactions: data.transactions
-      }));
+        sheetSyncTab: data.sheetSyncTab || '기록'
+      });
     }catch(e){
-      console.error('save error', e);
+      if(!retrying && e && e.code === 'unavailable'){ setTimeout(function(){ saveMeta(true); }, 600); return; }
+      console.error('saveMeta error', e);
       showToast('저장 실패: ' + (e && e.message ? e.message : String(e)));
     }
   }
 
-  async function saveMeta(){
-    persistLedger();
-  }
-
-  async function saveMonths(monthKeys){
-    persistLedger();
+  async function saveMonths(monthKeys, retrying){
+    if(dbStatus !== 'ready'){ lsSaveAll(); return; }
+    var uniq = [];
+    (monthKeys || []).forEach(function(mk){ if(mk && uniq.indexOf(mk) === -1) uniq.push(mk); });
+    for(var i = 0; i < uniq.length; i++){
+      var mk = uniq[i];
+      var items = data.transactions.filter(function(t){ return t.date.slice(0,7) === mk; });
+      try{
+        await ledgerDocRef().collection('months').doc(mk).set({ items: items });
+      }catch(e){
+        if(!retrying && e && e.code === 'unavailable'){ setTimeout(function(){ saveMonths([mk], true); }, 600); continue; }
+        console.error('saveMonths error', mk, e);
+        showToast('저장 실패(' + mk + '): ' + (e && e.message ? e.message : String(e)));
+      }
+    }
   }
 
   function catById(id){
@@ -1452,27 +1499,223 @@
     renderCatManageList();
     renderDebtManageList();
     renderInstallManageList();
-    document.getElementById('sheetIdInput').value = data.sheetSyncId || '';
-    document.getElementById('sheetTabName').value = data.sheetSyncTab || '기록';
-    document.getElementById('sheetSyncStatus').textContent = '';
+    document.getElementById('pasteYearInput').value = currentYear;
+    document.getElementById('pasteSyncStatus').textContent = '';
     document.getElementById('manageOverlay').classList.add('open');
   });
+  var pendingExcelImport = null;
+
+  function excelCatId(name){ return 'c_' + String(name).replace(/[·\s]/g, ''); }
+  function excelInstallId(name){ return 'i_' + String(name).replace(/[·\s]/g, ''); }
+
+  function excelCellDateStr(v, fallbackYear){
+    if(v instanceof Date && !isNaN(v.getTime())){
+      return v.getFullYear() + '-' + pad2(v.getMonth() + 1) + '-' + pad2(v.getDate());
+    }
+    if(typeof v === 'number' && window.XLSX && XLSX.SSF){
+      var d = XLSX.SSF.parse_date_code(v);
+      if(d) return d.y + '-' + pad2(d.m) + '-' + pad2(d.d);
+    }
+    return parsePastedDate(v, fallbackYear);
+  }
+
+  function parseExcelWorkbook(wb){
+    var categories = [];
+    var catByNameMap = {};
+    var installments = [];
+    var debts = [];
+    var transactions = [];
+    var counter = 1;
+    var fallbackYear = new Date().getFullYear();
+
+    var settingSheetName = wb.SheetNames.filter(function(n){ return n.indexOf('세팅') >= 0; })[0];
+    if(settingSheetName){
+      var srows = XLSX.utils.sheet_to_json(wb.Sheets[settingSheetName], {header:1, raw:true, defval:null});
+      for(var i = 1; i < srows.length; i++){
+        var r = srows[i];
+        if(!r) continue;
+        var name = r[0];
+        if(name == null || String(name).trim() === '') continue;
+        name = String(name).trim();
+        var group = r[1] ? String(r[1]).trim() : null;
+        var budget = typeof r[2] === 'number' ? r[2] : (parseFloat(r[2]) || 0);
+        var emoji = r[3] ? String(r[3]).trim() : null;
+        var type = (group === '고정비' || group === '변동비') ? 'expense' : 'income';
+        var cat = {
+          id: excelCatId(name), name: name, type: type,
+          emoji: emoji || (type === 'income' ? '💵' : '🏷️'),
+          budget: budget || 0
+        };
+        if(type === 'expense') cat.group = (group === '고정비') ? 'fixed' : 'variable';
+        categories.push(cat);
+        catByNameMap[name] = cat;
+
+        var instName = r[5];
+        if(instName != null && String(instName).trim() !== ''){
+          instName = String(instName).trim();
+          var total = typeof r[7] === 'number' ? r[7] : (parseFloat(r[7]) || 0);
+          var months = typeof r[8] === 'number' ? r[8] : (parseInt(r[8]) || 1);
+          var remain = typeof r[9] === 'number' ? r[9] : (parseInt(r[9]) || 0);
+          var paid = Math.max(0, Math.min(months, months - remain));
+          installments.push({
+            id: excelInstallId(instName), name: instName, emoji: '💳',
+            totalAmount: Math.round(total), months: months, paidMonths: paid
+          });
+        }
+      }
+    }
+
+    var dashName = wb.SheetNames.filter(function(n){ return n.indexOf('대시보드') >= 0; })[0];
+    if(dashName){
+      var drows = XLSX.utils.sheet_to_json(wb.Sheets[dashName], {header:1, raw:true, defval:null});
+      var debtCol = -1;
+      for(var ri = 0; ri < drows.length && debtCol < 0; ri++){
+        var row0 = drows[ri] || [];
+        for(var ci = 0; ci < row0.length; ci++){
+          if(typeof row0[ci] === 'string' && row0[ci].indexOf('빚 항목') >= 0){ debtCol = ci; break; }
+        }
+      }
+      if(debtCol >= 0){
+        var started = false;
+        for(var rj = 0; rj < drows.length; rj++){
+          var rowd = drows[rj] || [];
+          var nm = rowd[debtCol];
+          if(!started){
+            if(typeof nm === 'string' && nm.indexOf('빚 항목') >= 0) started = true;
+            continue;
+          }
+          if(nm == null || String(nm).trim() === '') break;
+          var amt2 = rowd[debtCol + 1];
+          debts.push({
+            id: 'd' + Date.now().toString(36) + rj,
+            name: String(nm).trim(),
+            amount: Math.round(typeof amt2 === 'number' ? amt2 : (parseFloat(amt2) || 0)),
+            note: ''
+          });
+        }
+      }
+    }
+
+    var excludeNames = {};
+    if(settingSheetName) excludeNames[settingSheetName] = true;
+    if(dashName) excludeNames[dashName] = true;
+    wb.SheetNames.forEach(function(n){ if(/연간|요약/.test(n)) excludeNames[n] = true; });
+
+    wb.SheetNames.forEach(function(sheetName){
+      if(excludeNames[sheetName]) return;
+      var rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {header:1, raw:true, defval:null});
+      var headerIdx = -1;
+      for(var hi = 0; hi < Math.min(rows.length, 10); hi++){
+        if(rows[hi] && String(rows[hi][0] || '').trim() === '날짜'){ headerIdx = hi; break; }
+      }
+      if(headerIdx < 0) return;
+      var lastDate = null;
+      for(var ti = headerIdx + 1; ti < rows.length; ti++){
+        var row = rows[ti];
+        if(!row) continue;
+        var dateRaw = row[0];
+        var catName = row[1];
+        var amt = row[2];
+        var typeRaw = row[3];
+        var gubun = row[4];
+        var memo = row[5];
+        var note = row[6];
+        var extra = row[7];
+        if(dateRaw != null){
+          var ds = excelCellDateStr(dateRaw, fallbackYear);
+          if(ds) lastDate = ds;
+        }
+        if(catName == null || amt == null || typeRaw == null) continue;
+        catName = String(catName).trim();
+        var cat = catByNameMap[catName];
+        if(!cat) continue;
+        var dateStr = lastDate || (fallbackYear + '-01-01');
+        var amount = (String(gubun || '').trim() === '할부' && typeof extra === 'number' && extra) ? extra : amt;
+        amount = typeof amount === 'number' ? amount : parseFloat(amount);
+        if(!amount || isNaN(amount)) continue;
+        var memoFinal = memo ? String(memo).trim() : '';
+        if(note) memoFinal = (memoFinal + ' ' + String(note).trim()).trim();
+        var txType = String(typeRaw).trim() === '수입' ? 'income' : 'expense';
+        transactions.push({
+          id: 'xls' + Date.now().toString(36) + counter,
+          type: txType, category: cat.id, amount: Math.round(amount),
+          date: dateStr, memo: memoFinal, createdAt: Date.now() + counter
+        });
+        counter++;
+      }
+    });
+
+    return { categories: categories, installments: installments, debts: debts, transactions: transactions };
+  }
+
   document.getElementById('importDataBtn').addEventListener('click', function(){
-    document.getElementById('importConfirmOverlay').classList.add('open');
+    document.getElementById('excelFileInput').click();
+  });
+  document.getElementById('excelFileInput').addEventListener('change', function(e){
+    var file = e.target.files && e.target.files[0];
+    var statusEl = document.getElementById('excelImportStatus');
+    if(!file) return;
+    if(!window.XLSX){
+      statusEl.textContent = '엑셀 처리 라이브러리를 아직 불러오는 중이에요. 잠시 후 다시 시도해 주세요.';
+      e.target.value = '';
+      return;
+    }
+    statusEl.textContent = '읽는 중...';
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      try{
+        var wb = XLSX.read(ev.target.result, { type: 'array', cellDates: true });
+        var parsed = parseExcelWorkbook(wb);
+        if(parsed.transactions.length === 0 && parsed.categories.length === 0){
+          statusEl.textContent = '이 파일에서 데이터를 찾지 못했어요. 원본 가계부와 같은 형식의 파일인지 확인해 주세요.';
+          e.target.value = '';
+          return;
+        }
+        pendingExcelImport = parsed;
+        var months = {};
+        parsed.transactions.forEach(function(t){ months[t.date.slice(0,7)] = true; });
+        var monthList = Object.keys(months).sort();
+        document.getElementById('importPreviewText').textContent =
+          '카테고리 ' + parsed.categories.length + '개, 거래 ' + parsed.transactions.length + '건' +
+          (monthList.length ? ' (' + monthList[0] + ' ~ ' + monthList[monthList.length-1] + ')' : '') +
+          ', 할부 ' + parsed.installments.length + '개, 빚 ' + parsed.debts.length + '개를 찾았어요.';
+        statusEl.textContent = '';
+        document.getElementById('importConfirmOverlay').classList.add('open');
+      }catch(err){
+        statusEl.textContent = '파일을 읽지 못했어요: ' + (err && err.message ? err.message : err);
+      }
+      e.target.value = '';
+    };
+    reader.onerror = function(){
+      statusEl.textContent = '파일을 읽지 못했어요.';
+      e.target.value = '';
+    };
+    reader.readAsArrayBuffer(file);
   });
   document.getElementById('importCancelBtn').addEventListener('click', function(){
     document.getElementById('importConfirmOverlay').classList.remove('open');
+    pendingExcelImport = null;
   });
   document.getElementById('importConfirmOverlay').addEventListener('click', function(e){
-    if(e.target.id === 'importConfirmOverlay') this.classList.remove('open');
+    if(e.target.id === 'importConfirmOverlay'){ this.classList.remove('open'); pendingExcelImport = null; }
   });
   document.getElementById('importConfirmBtn').addEventListener('click', function(){
-    data = JSON.parse(JSON.stringify(IMPORT_DATA));
+    if(!pendingExcelImport) return;
+    data = JSON.parse(JSON.stringify(pendingExcelImport));
     saveAll();
     document.getElementById('importConfirmOverlay').classList.remove('open');
     document.getElementById('manageOverlay').classList.remove('open');
-    currentMonth = new Date(2026, 8, 1);
-    currentYear = 2026;
+    var latestMonth = null;
+    data.transactions.forEach(function(t){
+      var mk = t.date.slice(0,7);
+      if(!latestMonth || mk > latestMonth) latestMonth = mk;
+    });
+    if(latestMonth){
+      var parts = latestMonth.split('-');
+      currentMonth = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1);
+      currentYear = parseInt(parts[0]);
+    }
+    pendingExcelImport = null;
     renderCatManageList();
     renderDebtManageList();
     renderInstallManageList();
@@ -1480,79 +1723,35 @@
     showToast('엑셀 데이터를 가져왔습니다');
   });
 
-  function extractSheetId(str){
-    str = (str || '').trim();
-    var m = str.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-    if(m) return m[1];
-    if(/^[a-zA-Z0-9_-]{20,}$/.test(str)) return str;
-    return null;
+
+  function parsePastedAmount(v){
+    if(v == null) return NaN;
+    var s = String(v).replace(/[^0-9.\-]/g, '');
+    if(!s) return NaN;
+    return parseFloat(s);
   }
 
-  function loadGvizTable(spreadsheetId, sheetName){
-    return new Promise(function(resolve, reject){
-      var cbName = '__gvizCb_' + Date.now() + '_' + Math.floor(Math.random()*100000);
-      var script;
-      var timeoutId = setTimeout(function(){ cleanup(); reject(new Error('timeout')); }, 12000);
-      function cleanup(){
-        clearTimeout(timeoutId);
-        delete window[cbName];
-        if(script && script.parentNode) script.parentNode.removeChild(script);
-      }
-      window[cbName] = function(resp){
-        cleanup();
-        if(!resp || resp.status === 'error'){
-          var msg = (resp && resp.errors && resp.errors[0] && resp.errors[0].detailed_message) || 'gviz error';
-          reject(new Error(msg));
-          return;
-        }
-        resolve(resp.table);
-      };
-      var url = 'https://docs.google.com/spreadsheets/d/' + spreadsheetId +
-        '/gviz/tq?tqx=out:json;responseHandler=' + cbName + ';headers=2&sheet=' + encodeURIComponent(sheetName);
-      script = document.createElement('script');
-      script.src = url;
-      script.onerror = function(){ cleanup(); reject(new Error('load error')); };
-      document.body.appendChild(script);
-    });
-  }
-
-  function gvizCellVal(row, idx){
-    if(!row || !row.c || !row.c[idx]) return null;
-    return row.c[idx].v;
-  }
-
-  function parseGvizDate(v){
+  function parsePastedDate(v, defaultYear){
     if(v == null) return null;
-    if(typeof v === 'string'){
-      var m = v.match(/^Date\((\d+),(\d+),(\d+)/);
-      if(m){
-        var year = parseInt(m[1]), month = parseInt(m[2]) + 1, day = parseInt(m[3]);
-        return year + '-' + pad2(month) + '-' + pad2(day);
-      }
-      var m2 = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-      if(m2) return m2[1] + '-' + pad2(parseInt(m2[2])) + '-' + pad2(parseInt(m2[3]));
-    }
+    var s = String(v).trim();
+    var m = s.match(/^(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
+    if(m) return m[1] + '-' + pad2(parseInt(m[2])) + '-' + pad2(parseInt(m[3]));
+    var m2 = s.match(/(\d{1,2})\s*[\/\.]\s*(\d{1,2})/);
+    if(m2) return defaultYear + '-' + pad2(parseInt(m2[1])) + '-' + pad2(parseInt(m2[2]));
     return null;
   }
 
-  async function refreshFromSheet(){
-    var idInput = document.getElementById('sheetIdInput').value;
-    var tabName = document.getElementById('sheetTabName').value.trim() || '기록';
-    var statusEl = document.getElementById('sheetSyncStatus');
-    var sheetId = extractSheetId(idInput);
-    if(!sheetId){ statusEl.textContent = '시트 링크 또는 ID를 정확히 입력해 주세요.'; return; }
-    data.sheetSyncId = idInput.trim();
-    data.sheetSyncTab = tabName;
-    saveMeta();
-    statusEl.textContent = '불러오는 중...';
-
-    var table;
-    try{
-      table = await loadGvizTable(sheetId, tabName);
-    }catch(e){
-      statusEl.textContent = '가져오기에 실패했어요. 시트 공유 설정이 "링크가 있는 모든 사용자 - 뷰어"인지, 탭 이름이 정확한지 확인해 주세요.';
+  function importPastedRows(){
+    var raw = document.getElementById('pasteSheetData').value;
+    var hasHeader = document.getElementById('pasteHasHeader').checked;
+    var defaultYear = parseInt(document.getElementById('pasteYearInput').value) || currentYear;
+    var statusEl = document.getElementById('pasteSyncStatus');
+    if(!raw || !raw.trim()){
+      statusEl.textContent = '붙여넣은 내용이 없어요.';
       return;
     }
+    var lines = raw.split(/\r\n|\n|\r/).filter(function(l){ return l.trim() !== ''; });
+    if(hasHeader) lines = lines.slice(1);
 
     var defaultDate = monthKey(currentMonth) + '-01';
     var newTxns = [];
@@ -1560,27 +1759,33 @@
     var skippedCats = {};
     var counter = 1;
 
-    (table.rows || []).forEach(function(row){
-      var catName = gvizCellVal(row, 1);
-      var amt = gvizCellVal(row, 2);
-      var typeRaw = gvizCellVal(row, 3);
-      var gubun = gvizCellVal(row, 4);
-      var memo = gvizCellVal(row, 5);
-      var note = gvizCellVal(row, 6);
-      var extra = gvizCellVal(row, 7);
-      if(catName == null || amt == null || typeRaw == null) return;
+    lines.forEach(function(line){
+      var cols = line.split('\t');
+      if(cols.length < 4) cols = line.split(/\s{2,}|,/);
+      var dateRaw = cols[0];
+      var catName = cols[1];
+      var amtRaw = cols[2];
+      var typeRaw = cols[3];
+      var gubun = cols[4];
+      var memo = cols[5];
+      var note = cols[6];
+      var extraRaw = cols[7];
+      if(catName == null || amtRaw == null || typeRaw == null) return;
       catName = String(catName).trim();
+      if(!catName) return;
       var cat = catByName(catName);
       if(!cat){ skippedCats[catName] = true; return; }
-      var dateStr = parseGvizDate(gvizCellVal(row, 0)) || defaultDate;
-      var amount = (gubun === '할부' && typeof extra === 'number') ? extra : amt;
-      if(typeof amount !== 'number' || !amount) return;
+      var dateStr = parsePastedDate(dateRaw, defaultYear) || defaultDate;
+      var amt = parsePastedAmount(amtRaw);
+      var extra = extraRaw != null ? parsePastedAmount(extraRaw) : NaN;
+      var amount = (String(gubun || '').trim() === '할부' && !isNaN(extra) && extra) ? extra : amt;
+      if(isNaN(amount) || !amount) return;
       var memoFinal = memo ? String(memo).trim() : '';
       if(note) memoFinal = (memoFinal + ' ' + String(note).trim()).trim();
       var type = String(typeRaw).trim() === '수입' ? 'income' : 'expense';
       affectedMonths[dateStr.slice(0,7)] = true;
       newTxns.push({
-        id: 'sync' + Date.now().toString(36) + counter,
+        id: 'paste' + Date.now().toString(36) + counter,
         type: type, category: cat.id, amount: Math.round(amount),
         date: dateStr, memo: memoFinal, createdAt: Date.now() + counter
       });
@@ -1588,7 +1793,7 @@
     });
 
     if(newTxns.length === 0){
-      statusEl.textContent = '가져올 거래를 찾지 못했어요. 탭 이름과 시트 내용을 확인해 주세요.';
+      statusEl.textContent = '가져올 거래를 찾지 못했어요. 열 순서(날짜, 카테고리, 금액, 구분...)와 카테고리 이름을 확인해 주세요.';
       return;
     }
     data.transactions = data.transactions.filter(function(t){
@@ -1598,14 +1803,14 @@
     saveMonths(Object.keys(affectedMonths));
     render();
     var monthList = Object.keys(affectedMonths).sort().join(', ');
-    var msg = newTxns.length + '건 동기화 완료 (' + monthList + ')';
+    var msg = newTxns.length + '건 가져오기 완료 (' + monthList + ')';
     if(Object.keys(skippedCats).length > 0){
       msg += ' · 알 수 없는 카테고리 건너뜀: ' + Object.keys(skippedCats).join(', ');
     }
     statusEl.textContent = msg;
-    showToast('구글시트와 동기화되었습니다');
+    showToast('붙여넣기로 가져왔습니다');
   }
-  document.getElementById('refreshSheetBtn').addEventListener('click', refreshFromSheet);
+  document.getElementById('pasteImportBtn').addEventListener('click', importPastedRows);
   document.getElementById('closeManageSheet').addEventListener('click', function(){
     document.getElementById('manageOverlay').classList.remove('open');
   });
@@ -1676,7 +1881,5 @@
   load();
 })();
 </script>
-
-
-
-</body></html>
+</body>
+</html>
